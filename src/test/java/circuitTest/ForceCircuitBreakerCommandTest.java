@@ -38,10 +38,24 @@ public class ForceCircuitBreakerCommandTest {
 			ForceCircuitCommand f3 = new ForceCircuitCommand(false);
 			// Execute goes to fall back directly hence should return FALSE
 			assertEquals(Boolean.FALSE, f3.execute());
-			// Even though the run method passed the rolling statistical window period is
+			// Even though the run method passed the rolling window period is
 			// not finished
 			// hence circuit will still be OPEN
 			assertEquals(Boolean.TRUE, f3.isCircuitBreakerOpen());
+		}
+		
+		// We let the time elapse
+		Thread.sleep(10000);
+		
+		{
+			// Here we are passing true means run() method will pass
+			ForceCircuitCommand f4 = new ForceCircuitCommand(false);
+			// As time has elapsed, execute goes to run hence should return TRUE
+			assertEquals(Boolean.TRUE, f4.execute());
+			// As the run method passed the rolling window period is
+			// finished
+			// hence circuit will still be CLOSED
+			assertEquals(Boolean.FALSE, f4.isCircuitBreakerOpen());
 		}
 
 	}
@@ -56,6 +70,7 @@ public class ForceCircuitBreakerCommandTest {
 					.andThreadPoolKey(HystrixThreadPoolKey.Factory.asKey("TestPool")).andCommandPropertiesDefaults(
 							HystrixCommandProperties.Setter().withCircuitBreakerRequestVolumeThreshold(1)
 									.withMetricsRollingStatisticalWindowInMilliseconds(1000)
+									.withMetricsRollingPercentileWindowInMilliseconds(100)
 									.withCircuitBreakerErrorThresholdPercentage(0)
 									.withMetricsHealthSnapshotIntervalInMilliseconds(100)));
 
@@ -64,9 +79,11 @@ public class ForceCircuitBreakerCommandTest {
 
 		@Override
 		public Boolean run() {
+			// Actual call/execution for which circuit is to be done goes in this method
 			if (doFail) {
 				try {
 					Thread.sleep(1000);
+					
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
@@ -76,6 +93,8 @@ public class ForceCircuitBreakerCommandTest {
 
 		@Override
 		public Boolean getFallback() {
+			// In this method we handle the fall back case
+			// May be return cached information or default value etc 
 			return Boolean.FALSE;
 		}
 	}
