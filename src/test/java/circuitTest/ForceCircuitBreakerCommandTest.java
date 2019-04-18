@@ -12,12 +12,17 @@ import com.netflix.hystrix.HystrixThreadPoolKey;
 
 public class ForceCircuitBreakerCommandTest {
 
+	private final static int REQUEST_VOLUME_THRESHOLD = 1;
+	private final static int ERROR_THRESHOLD_PERCENTAGE = 0;
+	private final static int INTERVAL_IN_MILLISECONDS = 100;
+	private final static int ROLLING_WINDOW_IN_MILLISECONDS = 1000;
+
 	@Test
 	public void testForceOpen() throws InterruptedException {
 		// Using { } to keep the FakeCommand object scope limited
 		{
-			// Here we are passing false means run() method will NOT FAIL
-			ForceCircuitCommand f1 = new ForceCircuitCommand(false);
+			// Here we are passing true means run() method will PASS
+			ForceCircuitSyncCommand f1 = new ForceCircuitSyncCommand(true);
 			// Execute goes to run hence should return TRUE
 			assertEquals(Boolean.TRUE, f1.execute());
 			// As run method was successful circuit will remain CLOSE
@@ -25,8 +30,8 @@ public class ForceCircuitBreakerCommandTest {
 		}
 
 		{
-			// Here we are passing true means run() method will fail
-			ForceCircuitCommand f2 = new ForceCircuitCommand(true);
+			// Here we are passing false means run() method will FAIL
+			ForceCircuitSyncCommand f2 = new ForceCircuitSyncCommand(false);
 			// Execute goes to fall back due to run failure hence should return FALSE
 			assertEquals(Boolean.FALSE, f2.execute());
 			// As run method failed circuit will OPEN
@@ -34,8 +39,8 @@ public class ForceCircuitBreakerCommandTest {
 		}
 
 		{
-			// Here we are passing true means run() method will pass
-			ForceCircuitCommand f3 = new ForceCircuitCommand(false);
+			// Here we are passing true means run() method will PASS
+			ForceCircuitSyncCommand f3 = new ForceCircuitSyncCommand(true);
 			// Execute goes to fall back directly hence should return FALSE
 			assertEquals(Boolean.FALSE, f3.execute());
 			// Even though the run method passed the rolling window period is
@@ -43,13 +48,13 @@ public class ForceCircuitBreakerCommandTest {
 			// hence circuit will still be OPEN
 			assertEquals(Boolean.TRUE, f3.isCircuitBreakerOpen());
 		}
-		
+
 		// We let the time elapse
-		Thread.sleep(10000);
-		
+		Thread.sleep(ROLLING_WINDOW_IN_MILLISECONDS * 10);
+
 		{
-			// Here we are passing true means run() method will pass
-			ForceCircuitCommand f4 = new ForceCircuitCommand(false);
+			// Here we are passing true means run() method will PASS
+			ForceCircuitSyncCommand f4 = new ForceCircuitSyncCommand(true);
 			// As time has elapsed, execute goes to run hence should return TRUE
 			assertEquals(Boolean.TRUE, f4.execute());
 			// As the run method passed the rolling window period is
@@ -60,32 +65,34 @@ public class ForceCircuitBreakerCommandTest {
 
 	}
 
-	private class ForceCircuitCommand extends HystrixCommand<Boolean> {
+	private class ForceCircuitSyncCommand extends HystrixCommand<Boolean> {
 
 		private final boolean doFail;
 
-		public ForceCircuitCommand(boolean doFail) {
+		public ForceCircuitSyncCommand(boolean doFail) {
 			super(Setter.withGroupKey(HystrixCommandGroupKey.Factory.asKey("TestGroup"))
 					.andCommandKey(HystrixCommandKey.Factory.asKey("TestKey"))
-					.andThreadPoolKey(HystrixThreadPoolKey.Factory.asKey("TestPool")).andCommandPropertiesDefaults(
-							HystrixCommandProperties.Setter().withCircuitBreakerRequestVolumeThreshold(1)
-									.withMetricsRollingStatisticalWindowInMilliseconds(1000)
-									.withMetricsRollingPercentileWindowInMilliseconds(100)
-									.withCircuitBreakerErrorThresholdPercentage(0)
-									.withMetricsHealthSnapshotIntervalInMilliseconds(100)));
+					.andThreadPoolKey(HystrixThreadPoolKey.Factory.asKey("TestPool"))
+					.andCommandPropertiesDefaults(HystrixCommandProperties.Setter()
+							.withCircuitBreakerRequestVolumeThreshold(REQUEST_VOLUME_THRESHOLD)
+							.withMetricsRollingStatisticalWindowInMilliseconds(ROLLING_WINDOW_IN_MILLISECONDS)
+							.withMetricsRollingPercentileWindowInMilliseconds(INTERVAL_IN_MILLISECONDS)
+							.withCircuitBreakerErrorThresholdPercentage(ERROR_THRESHOLD_PERCENTAGE)
+							.withMetricsHealthSnapshotIntervalInMilliseconds(INTERVAL_IN_MILLISECONDS)));
 
 			this.doFail = doFail;
 		}
 
 		@Override
 		public Boolean run() {
+			System.out.println("Run");
+
 			// Actual call/execution for which circuit is to be done goes in this method
-			if (doFail) {
+			if (!doFail) {
 				try {
-					Thread.sleep(1000);
-					
+					Thread.sleep(INTERVAL_IN_MILLISECONDS * 20);
 				} catch (InterruptedException e) {
-					e.printStackTrace();
+					System.err.println(e.getMessage());
 				}
 			}
 			return Boolean.TRUE;
@@ -93,8 +100,10 @@ public class ForceCircuitBreakerCommandTest {
 
 		@Override
 		public Boolean getFallback() {
+			System.out.println("Fallback");
+
 			// In this method we handle the fall back case
-			// May be return cached information or default value etc 
+			// May be return cached information or default value etc
 			return Boolean.FALSE;
 		}
 	}
