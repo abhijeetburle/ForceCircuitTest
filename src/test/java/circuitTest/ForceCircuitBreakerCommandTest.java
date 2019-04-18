@@ -11,7 +11,7 @@ import com.netflix.hystrix.HystrixCommandProperties;
 import com.netflix.hystrix.HystrixThreadPoolKey;
 
 public class ForceCircuitBreakerCommandTest {
-	
+
 	private final static int REQUEST_VOLUME_THRESHOLD = 1;
 	private final static int ERROR_THRESHOLD_PERCENTAGE = 0;
 	private final static int INTERVAL_IN_MILLISECONDS = 100;
@@ -48,10 +48,10 @@ public class ForceCircuitBreakerCommandTest {
 			// hence circuit will still be OPEN
 			assertEquals(Boolean.TRUE, f3.isCircuitBreakerOpen());
 		}
-		
+
 		// We let the time elapse
-		Thread.sleep(ROLLING_WINDOW_IN_MILLISECONDS*10);
-		
+		Thread.sleep(ROLLING_WINDOW_IN_MILLISECONDS * 10);
+
 		{
 			// Here we are passing true means run() method will PASS
 			ForceCircuitSyncCommand f4 = new ForceCircuitSyncCommand(true);
@@ -72,12 +72,13 @@ public class ForceCircuitBreakerCommandTest {
 		public ForceCircuitSyncCommand(boolean doFail) {
 			super(Setter.withGroupKey(HystrixCommandGroupKey.Factory.asKey("TestGroup"))
 					.andCommandKey(HystrixCommandKey.Factory.asKey("TestKey"))
-					.andThreadPoolKey(HystrixThreadPoolKey.Factory.asKey("TestPool")).andCommandPropertiesDefaults(
-							HystrixCommandProperties.Setter().withCircuitBreakerRequestVolumeThreshold(REQUEST_VOLUME_THRESHOLD)
-									.withMetricsRollingStatisticalWindowInMilliseconds(ROLLING_WINDOW_IN_MILLISECONDS)
-									.withMetricsRollingPercentileWindowInMilliseconds(INTERVAL_IN_MILLISECONDS)
-									.withCircuitBreakerErrorThresholdPercentage(ERROR_THRESHOLD_PERCENTAGE)
-									.withMetricsHealthSnapshotIntervalInMilliseconds(INTERVAL_IN_MILLISECONDS)));
+					.andThreadPoolKey(HystrixThreadPoolKey.Factory.asKey("TestPool"))
+					.andCommandPropertiesDefaults(HystrixCommandProperties.Setter()
+							.withCircuitBreakerRequestVolumeThreshold(REQUEST_VOLUME_THRESHOLD)
+							.withMetricsRollingStatisticalWindowInMilliseconds(ROLLING_WINDOW_IN_MILLISECONDS)
+							.withMetricsRollingPercentileWindowInMilliseconds(INTERVAL_IN_MILLISECONDS)
+							.withCircuitBreakerErrorThresholdPercentage(ERROR_THRESHOLD_PERCENTAGE)
+							.withMetricsHealthSnapshotIntervalInMilliseconds(INTERVAL_IN_MILLISECONDS)));
 
 			this.doFail = doFail;
 		}
@@ -89,7 +90,7 @@ public class ForceCircuitBreakerCommandTest {
 			// Actual call/execution for which circuit is to be done goes in this method
 			if (!doFail) {
 				try {
-					Thread.sleep(INTERVAL_IN_MILLISECONDS*20);
+					Thread.sleep(INTERVAL_IN_MILLISECONDS * 20);
 				} catch (InterruptedException e) {
 					System.err.println(e.getMessage());
 				}
@@ -102,7 +103,7 @@ public class ForceCircuitBreakerCommandTest {
 			System.out.println("Fallback");
 
 			// In this method we handle the fall back case
-			// May be return cached information or default value etc 
+			// May be return cached information or default value etc
 			return Boolean.FALSE;
 		}
 	}
